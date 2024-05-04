@@ -131,7 +131,7 @@ function combined_system_dynamics(params,x̄,ū)
     # @show combined_quadrotor_dynamics(params,x̄,ū)
     # @show size(vcat(combined_quadrotor_dynamics(params,x̄,ū)...))
     # @show combined_load_dynamics(params,x̄,ū)
-    return [combined_quadrotor_dynamics(params,x̄,ū)... ; combined_load_dynamics(params,x̄,ū)]
+    return [vcat(combined_quadrotor_dynamics(params,x̄,ū)...) ; combined_load_dynamics(params,x̄,ū)]
 end
 
 
