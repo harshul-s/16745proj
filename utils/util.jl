@@ -2,6 +2,7 @@
 function rk4(model, ode, x, u, dt)
     # rk4 
     k1 = dt * ode(model, x, u)
+    # @show size(k1)
     k2 = dt * ode(model, x + k1 / 2, u)
     k3 = dt * ode(model, x + k2 / 2, u)
     k4 = dt * ode(model, x + k3, u)
@@ -25,4 +26,4 @@ function create_idx(nx, nu, N)
     return (nx=nx, nu=nu, N=N, nz=nz, nc=nc, x=x, u=u, c=c)
 end
 
-function get_obstic
+# function get_obstic
