@@ -15,19 +15,20 @@ load_params = (m=0.9,
             radius=0.2)
 
 function load_dynamics(x,u)
-    ẋ = zeros(6)
+    ẋ = zeros(eltype(x),6)
     ẋ[1:3] = x[4:6]
     ẋ[4:6] = u[1:3]
     ẋ[6] -= 9.81 # gravity
     return ẋ
 end
 
-function quadrotor_dynamics(model::NamedTuple, x, u,xload)
+function quadrotor_dynamics(model, x, u,xload)
     # quadrotor dynamics with an MRP for attitude
     # and velocity in the world frame (not body frame)
 
     r = x[1:3]     # position in world frame 
-    q = normalize(Quaternion(x[4:7]))     # quaterion in body frame 
+    # q = normalize(Quaternion(x[4:7]))     # quaterion in body frame 
+    q = x[4:7]*u[6]
     v = x[8:10]     # n_p_b (MRP) attitude 
     ω = x[11:13]   # angular velocity 
 
@@ -60,11 +61,13 @@ function quadrotor_dynamics(model::NamedTuple, x, u,xload)
     # this is xdot 
     Δx = xload[1:3] - r
     dir = Δx/norm(Δx)
-    
+    q_mul = SVector(0.5 * Quaternion(q) * Quaternion(zero(x[1]), ω))
+    new_vec = [q_mul.w;q_mul.x;q_mul.y;q_mul.z]
+    # @show new_vec
     return [
         v
-        SVector(0.5 * q * Quaternion(zero(x[1]), ω))
-        gravity + (1 / mass) * (q * F + u[5]*dir)
+        new_vec
+        gravity + (1 / mass) * (Quaternion(q)*F + u[5]*dir)
         J \ (τ - cross(ω, J * ω))
     ]
 end
@@ -82,11 +85,11 @@ function combined_quadrotor_dynamics(params, x, u)
     N = (n_batch - 6) ÷ 13 
     # nx = params.nx
     # idx = params.idx
-    xdots = [zeros(13) for i=1:N]
+    xdots = [zeros(eltype(x),13) for i=1:N]
 
     for i=1:N
         xi = x[(i-1)*13 .+ 1:13*i]
-        ui = u[(i-1)*5 .+ 1:5*i]
+        ui = u[(i-1)*6 .+ 1:6*i] #changed from 5 to 6
         xload= x[13*N+1:end]
         xdots[i] = quadrotor_dynamics(params.lift, xi, ui,xload)
     end
@@ -123,8 +126,7 @@ function combined_load_dynamics(params, x, u)
     u_slack_load = -1.0*sum(dir .* u_load)
 
     load_inds = (1:6) .+ 13*num_lift
-    xdots = load_dynamics(x[load_inds], u_slack_load / load_mass)
-    return xdots
+    return load_dynamics(x[load_inds], u_slack_load / load_mass)
 end 
 
 function combined_system_dynamics(params,x̄,ū)
